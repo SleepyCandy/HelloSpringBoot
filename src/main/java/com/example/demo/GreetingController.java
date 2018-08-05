@@ -5,10 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.w3c.dom.NodeList;
 import org.w3c.dom.Node;
 
@@ -16,6 +13,7 @@ import org.w3c.dom.Node;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
+import javax.validation.constraints.Null;
 import javax.xml.soap.*;
 import java.io.IOException;
 import java.net.URL;
@@ -23,18 +21,34 @@ import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 
 @Controller
-@RestController
 public class GreetingController {
 
     public static Logger logger = LoggerFactory.getLogger(GreetingController.class);
 
+    @RequestMapping("/")
+    public String index(){
+        return "inputForm";
+    }
+    @RequestMapping("/Process")
+    public String processForm(@RequestParam(name="IdentityNumber", required=false, defaultValue="World") String IdentityNumber,Model model){
+        model.addAttribute("message", IdentityNumber);
+//        System.out.println(requestSOAP(IdentityNumber));
+        model.addAttribute("answer", requestSOAP(IdentityNumber));
+        return "IdentityCheck";
+    }
+
+
     @GetMapping("/Id/{id}")
-    public String greeting(@PathVariable(name="id") String Id) {
+    public String requestSOAP(@PathVariable(name="id") String Id) {
 
     String soapEndpointUrl = "https://rdws.rd.go.th/serviceRD3/checktinpinservice.asmx?WSDL";
     String soapAction = "https://rdws.rd.go.th/serviceRD3/checktinpinservice/ServiceTIN";
     System.out.println(Id);
-    return callSoapWebService(soapEndpointUrl, soapAction,Id);
+    String report = callSoapWebService(soapEndpointUrl, soapAction,Id);
+    if(report != "True")
+        return "error!";
+    else
+    return "pass";
 }
 
     private static void createSoapEnvelope(SOAPMessage soapMessage,String Id) throws SOAPException {
@@ -92,18 +106,17 @@ public class GreetingController {
             try{
                 //Element you choose
                 NodeList nodes = soapResponse.getSOAPBody().getElementsByTagName("vDigitOk");
+//               NodeList nodes = soapResponse.getSOAPBody().getElementsByTagName("faultstring");
                 logger.info(getNode(nodes));
                 soapConnection.close();
                 return getNode(nodes);
             }catch (Exception e)
             {
                 NodeList nodes = soapResponse.getSOAPBody().getElementsByTagName("faultstring");
-                logger.info(getNode(nodes));
+                logger.info("faise" + getNode(nodes));
                 soapConnection.close();
                 return getNode(nodes);
             }
-
-
 
         } catch (Exception e) {
             System.err.println("\nError occurred while sending SOAP Request to Server!\nMake sure you have the correct endpoint URL and SOAPAction!\n");
